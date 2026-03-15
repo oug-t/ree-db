@@ -1,0 +1,26 @@
+# Next.js
+node_modules/
+.next/
+out/
+build/
+.env*.local
+.env
+.DS_Store
+
+# PHP & Data
+api/cfp_dataset.json
+api/cif_files/
+api/dos/
+api/band_files/
+
+# Ignore raw files
+*.cif
+*.ene
+*.dos
+*.json_metadata
+
+# Ide
+.vscode/
+.idea/
+*.log
+npm-debug.log*
