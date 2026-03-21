@@ -1,26 +1,21 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
-  Database,
-  CloudUpload,
   ShieldCheck,
   Atom,
-  FileJson,
-  X,
-  CheckCircle2,
-  RefreshCw,
   ExternalLink,
   Beaker,
   Cpu,
   Sparkles,
   Network,
   ArrowLeft,
+  Search,
+  Filter
 } from "lucide-react";
 
-// Custom icons for external services
 function GitHubIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -48,20 +43,12 @@ type ModelCard = {
   status: "stable" | "beta" | "experimental";
 };
 
-type FileValidation = {
-  name: string;
-  size: string;
-  status: "pending" | "validating" | "valid" | "invalid";
-  records?: number;
-};
-
 const mlModels: ModelCard[] = [
   {
     id: "cfnn",
     name: "Crystal Field Neural Network",
     version: "v2.4.1",
-    description:
-      "Predicts crystal field parameters from structural data using deep learning with attention mechanisms.",
+    description: "Predicts crystal field parameters from structural data using deep learning with attention mechanisms.",
     icon: <Network className="size-5" />,
     colabUrl: "https://colab.research.google.com/",
     githubUrl: "https://github.com/",
@@ -71,8 +58,7 @@ const mlModels: ModelCard[] = [
     id: "mag-predictor",
     name: "Magnetic Property Predictor",
     version: "v1.8.0",
-    description:
-      "Estimates magnetic susceptibility and ordering temperatures from composition and structure.",
+    description: "Estimates magnetic susceptibility and ordering temperatures from composition and structure.",
     icon: <Sparkles className="size-5" />,
     colabUrl: "https://colab.research.google.com/",
     githubUrl: "https://github.com/",
@@ -82,8 +68,7 @@ const mlModels: ModelCard[] = [
     id: "dos-gen",
     name: "DOS Generator",
     version: "v0.9.2",
-    description:
-      "Generates approximate density of states from crystal structure using graph neural networks.",
+    description: "Generates approximate density of states from crystal structure using graph neural networks.",
     icon: <Cpu className="size-5" />,
     colabUrl: "https://colab.research.google.com/",
     githubUrl: "https://github.com/",
@@ -93,8 +78,7 @@ const mlModels: ModelCard[] = [
     id: "structure-opt",
     name: "Structure Optimizer",
     version: "v1.2.0",
-    description:
-      "Relaxes crystal structures using machine learning potentials trained on DFT data.",
+    description: "Relaxes crystal structures using machine learning potentials trained on DFT data.",
     icon: <Beaker className="size-5" />,
     colabUrl: "https://colab.research.google.com/",
     githubUrl: "https://github.com/",
@@ -108,17 +92,13 @@ export default function LabDashboard() {
   const [authError, setAuthError] = useState("");
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
-  // File upload state
-  const [uploadedFile, setUploadedFile] = useState<FileValidation | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "stable" | "beta" | "experimental">("all");
 
-  // Auth handler
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsAuthenticating(true);
     setAuthError("");
-
     await new Promise((r) => setTimeout(r, 600));
 
     if (password.trim()) {
@@ -129,70 +109,16 @@ export default function LabDashboard() {
     setIsAuthenticating(false);
   };
 
-  // File handlers
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  }, []);
+  const filteredModels = mlModels.filter((model) => {
+    const matchesSearch = model.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      model.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === "all" || model.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  }, []);
-
-  const processFile = useCallback((file: File) => {
-    const ext = file.name.split(".").pop()?.toLowerCase();
-    if (ext !== "json") return;
-
-    setUploadedFile({
-      name: file.name,
-      size: `${(file.size / 1024).toFixed(1)} KB`,
-      status: "pending",
-    });
-  }, []);
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      setIsDragging(false);
-      const file = e.dataTransfer.files[0];
-      if (file) processFile(file);
-    },
-    [processFile],
-  );
-
-  const handleFileSelect = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) processFile(file);
-    },
-    [processFile],
-  );
-
-  const validateFile = useCallback(async () => {
-    if (!uploadedFile) return;
-
-    setUploadedFile((prev) =>
-      prev ? { ...prev, status: "validating" } : null,
-    );
-    await new Promise((r) => setTimeout(r, 1200));
-
-    const records = Math.floor(Math.random() * 500) + 100;
-    setUploadedFile((prev) =>
-      prev ? { ...prev, status: "valid", records } : null,
-    );
-  }, [uploadedFile]);
-
-  const clearFile = useCallback(() => {
-    setUploadedFile(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  }, []);
-
-  // Authentication Gate
   if (!isAuthenticated) {
     return (
       <div className="flex min-h-screen flex-col bg-white">
-        {/* Minimal Header */}
         <header className="border-b border-slate-200">
           <div className="mx-auto flex h-12 max-w-5xl items-center px-4">
             <Link href="/" className="flex items-center gap-2 text-slate-900">
@@ -205,14 +131,12 @@ export default function LabDashboard() {
         <main className="flex flex-1 items-center justify-center p-4">
           <div className="w-full max-w-sm">
             <div className="border border-slate-200 bg-white p-6">
-              {/* Lock Icon */}
               <div className="mb-5 flex justify-center">
                 <div className="flex size-10 items-center justify-center border border-slate-200">
                   <ShieldCheck className="size-4 text-slate-700" />
                 </div>
               </div>
 
-              {/* Title */}
               <h1 className="mb-1 text-center text-lg font-medium text-slate-900">
                 Ke Lab Research Portal
               </h1>
@@ -220,7 +144,6 @@ export default function LabDashboard() {
                 Training & Resource Hub
               </p>
 
-              {/* Login Form */}
               <form onSubmit={handleAuth} className="space-y-4">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-700">
@@ -247,7 +170,6 @@ export default function LabDashboard() {
                 </Button>
               </form>
 
-              {/* Footer Note */}
               <p className="mt-5 text-center text-[10px] leading-relaxed text-slate-400">
                 Access restricted to authorized lab personnel.
                 <br />
@@ -255,7 +177,6 @@ export default function LabDashboard() {
               </p>
             </div>
 
-            {/* Back Link */}
             <div className="mt-4 text-center">
               <Link
                 href="/"
@@ -271,12 +192,10 @@ export default function LabDashboard() {
     );
   }
 
-  // Main Dashboard
   return (
     <div className="flex min-h-screen flex-col bg-white">
-      {/* Header */}
       <header className="border-b border-slate-200">
-        <div className="mx-auto flex h-12 max-w-6xl items-center justify-between px-4">
+        <div className="mx-auto flex h-12 w-full max-w-7xl items-center justify-between px-6">
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-2 text-slate-900">
               <Atom className="size-4" />
@@ -294,258 +213,161 @@ export default function LabDashboard() {
         </div>
       </header>
 
-      <div className="flex flex-1">
-        {/* Sidebar - Database Management */}
-        <aside className="hidden w-64 border-r border-slate-200 bg-slate-50/50 lg:block">
-          <div className="p-4">
-            <div className="mb-4 flex items-center gap-2">
-              <Database className="size-4 text-slate-600" />
-              <h2 className="text-xs font-medium uppercase tracking-wider text-slate-600">
-                Database Management
-              </h2>
+      <div className="mx-auto flex w-full max-w-7xl flex-1 px-6 py-8">
+        <aside className="hidden w-64 shrink-0 pr-8 lg:block">
+          <div className="sticky top-8 space-y-6">
+            <div>
+              <div className="mb-3 flex items-center gap-2 text-slate-900">
+                <Search className="size-4" />
+                <h2 className="text-xs font-semibold uppercase tracking-wider">Search Models</h2>
+              </div>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="e.g. Crystal Field..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-9 w-full border border-slate-200 bg-slate-50 px-3 text-xs text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none"
+                />
+              </div>
             </div>
 
-            {/* Data Upload Zone */}
-            <div className="border border-slate-200 bg-white p-3">
-              <div className="mb-3 flex items-center gap-2">
-                <CloudUpload className="size-3.5 text-slate-500" />
-                <span className="text-xs font-medium text-slate-700">
-                  Data Upload
-                </span>
+            <div>
+              <div className="mb-3 flex items-center gap-2 text-slate-900">
+                <Filter className="size-4" />
+                <h2 className="text-xs font-semibold uppercase tracking-wider">Status Filter</h2>
               </div>
-
-              {!uploadedFile ? (
-                <div
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`flex cursor-pointer flex-col items-center justify-center border border-dashed p-4 transition-colors ${
-                    isDragging
-                      ? "border-slate-400 bg-slate-50"
-                      : "border-slate-300 hover:border-slate-400"
-                  }`}
-                >
-                  <FileJson className="mb-2 size-6 text-slate-400" />
-                  <p className="text-[10px] text-slate-500">
-                    Drop .json file here
-                  </p>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".json"
-                    onChange={handleFileSelect}
-                    className="hidden"
-                  />
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between border border-slate-200 bg-slate-50 p-2">
-                    <div className="flex items-center gap-2">
-                      <FileJson className="size-4 text-slate-600" />
-                      <div>
-                        <p className="font-mono text-[10px] font-medium text-slate-700">
-                          {uploadedFile.name}
-                        </p>
-                        <p className="font-mono text-[9px] text-slate-400">
-                          {uploadedFile.size}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={clearFile}
-                      className="text-slate-400 hover:text-slate-600"
-                    >
-                      <X className="size-3.5" />
-                    </button>
-                  </div>
-
-                  {uploadedFile.status === "valid" && (
-                    <div className="flex items-center gap-1.5 text-[10px] text-green-600">
-                      <CheckCircle2 className="size-3" />
-                      <span>{uploadedFile.records} records validated</span>
-                    </div>
-                  )}
-
-                  {uploadedFile.status === "pending" && (
-                    <button
-                      onClick={validateFile}
-                      className="h-7 w-full border border-slate-200 bg-white text-[10px] font-medium text-slate-600 hover:bg-slate-50"
-                    >
-                      Validate File
-                    </button>
-                  )}
-
-                  {uploadedFile.status === "validating" && (
-                    <div className="flex h-7 items-center justify-center gap-1.5 text-[10px] text-slate-500">
-                      <RefreshCw className="size-3 animate-spin" />
-                      <span>Validating...</span>
-                    </div>
-                  )}
-
-                  {uploadedFile.status === "valid" && (
-                    <button className="h-7 w-full bg-slate-900 text-[10px] font-medium text-white hover:bg-slate-800">
-                      Commit to Database
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Quick Stats */}
-            <div className="mt-4 space-y-2">
-              <div className="flex items-center justify-between border-b border-slate-100 py-2">
-                <span className="text-[10px] text-slate-500">
-                  Total Compounds
-                </span>
-                <span className="font-mono text-xs font-medium text-slate-700">
-                  1,247
-                </span>
-              </div>
-              <div className="flex items-center justify-between border-b border-slate-100 py-2">
-                <span className="text-[10px] text-slate-500">Last Updated</span>
-                <span className="font-mono text-[10px] text-slate-600">
-                  2024-03-14
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2">
-                <span className="text-[10px] text-slate-500">
-                  Server Status
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="size-1.5 rounded-full bg-green-500" />
-                  <span className="text-[10px] text-green-600">Online</span>
-                </span>
+              <div className="flex flex-col gap-1.5">
+                {(["all", "stable", "beta", "experimental"] as const).map((status) => (
+                  <button
+                    key={status}
+                    onClick={() => setStatusFilter(status)}
+                    className={`flex items-center justify-between border px-3 py-2 text-left text-xs capitalize transition-colors ${statusFilter === status
+                      ? "border-slate-900 bg-slate-900 text-white"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                      }`}
+                  >
+                    <span>{status}</span>
+                    <span className="text-[10px] opacity-60">
+                      {status === "all"
+                        ? mlModels.length
+                        : mlModels.filter(m => m.status === status).length}
+                    </span>
+                  </button>
+                ))}
               </div>
             </div>
           </div>
         </aside>
 
-        {/* Main Content - Model Cards */}
-        <main className="flex-1 p-6">
-          <div className="mx-auto max-w-4xl">
-            {/* Section Header */}
-            <div className="mb-6">
-              <h1 className="text-lg font-medium text-slate-900">
-                ML Models & Training Resources
-              </h1>
-              <p className="mt-1 text-xs text-slate-500">
-                Access training notebooks and source code for Ke Lab machine
-                learning models
-              </p>
-            </div>
+        <main className="flex-1">
+          <div className="mb-8">
+            <h1 className="text-2xl font-semibold text-slate-900">
+              ML Models & Training
+            </h1>
+            <p className="mt-2 text-sm text-slate-500">
+              Access training notebooks, documentation, and source code for Ke Lab models.
+            </p>
+          </div>
 
-            {/* Model Cards Grid */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              {mlModels.map((model) => (
-                <div
-                  key={model.id}
-                  className="border border-slate-200 bg-white p-4 transition-colors hover:border-slate-300"
-                >
-                  {/* Card Header */}
-                  <div className="mb-3 flex items-start justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex size-8 items-center justify-center border border-slate-200 text-slate-600">
-                        {model.icon}
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium text-slate-900">
-                          {model.name}
-                        </h3>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-[10px] text-slate-500">
-                            {model.version}
-                          </span>
-                          <span
-                            className={`text-[9px] font-medium uppercase tracking-wider ${
-                              model.status === "stable"
-                                ? "text-green-600"
-                                : model.status === "beta"
-                                  ? "text-amber-600"
-                                  : "text-slate-400"
-                            }`}
-                          >
-                            {model.status}
-                          </span>
-                        </div>
-                      </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
+            {filteredModels.map((model) => (
+              <div
+                key={model.id}
+                className="flex flex-col border border-slate-200 bg-white p-5 transition-all hover:border-slate-300 hover:shadow-sm"
+              >
+                <div className="mb-4 flex items-start gap-3">
+                  <div className="flex size-10 shrink-0 items-center justify-center bg-slate-50 border border-slate-100 text-slate-700">
+                    {model.icon}
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900">
+                      {model.name}
+                    </h3>
+                    <div className="mt-1.5 flex items-center gap-2.5">
+                      <span className="font-mono text-[10px] text-slate-500">
+                        {model.version}
+                      </span>
+                      <span
+                        className={`text-[9px] font-bold uppercase tracking-wider ${model.status === "stable"
+                          ? "text-emerald-600"
+                          : model.status === "beta"
+                            ? "text-amber-600"
+                            : "text-slate-400"
+                          }`}
+                      >
+                        {model.status}
+                      </span>
                     </div>
                   </div>
-
-                  {/* Description */}
-                  <p className="mb-4 text-xs leading-relaxed text-slate-600">
-                    {model.description}
-                  </p>
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-2">
-                    <a
-                      href={model.colabUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex flex-1 items-center justify-center gap-1.5 border border-slate-200 bg-white py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
-                    >
-                      <ColabIcon className="size-3.5" />
-                      <span>Launch in Colab</span>
-                      <ExternalLink className="size-2.5 text-slate-400" />
-                    </a>
-                    <a
-                      href={model.githubUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex flex-1 items-center justify-center gap-1.5 border border-slate-200 bg-white py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
-                    >
-                      <GitHubIcon className="size-3.5" />
-                      <span>Source Code</span>
-                      <ExternalLink className="size-2.5 text-slate-400" />
-                    </a>
-                  </div>
                 </div>
-              ))}
-            </div>
 
-            {/* Additional Resources */}
-            <div className="mt-8 border-t border-slate-200 pt-6">
-              <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-slate-500">
-                Additional Resources
-              </h2>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <a
-                  href="#"
-                  className="flex items-center gap-2 border border-slate-200 p-3 text-xs text-slate-600 hover:border-slate-300"
-                >
-                  <ExternalLink className="size-3.5 text-slate-400" />
-                  <span>Documentation Wiki</span>
-                </a>
-                <a
-                  href="#"
-                  className="flex items-center gap-2 border border-slate-200 p-3 text-xs text-slate-600 hover:border-slate-300"
-                >
-                  <ExternalLink className="size-3.5 text-slate-400" />
-                  <span>Training Data Repository</span>
-                </a>
-                <a
-                  href="#"
-                  className="flex items-center gap-2 border border-slate-200 p-3 text-xs text-slate-600 hover:border-slate-300"
-                >
-                  <ExternalLink className="size-3.5 text-slate-400" />
-                  <span>Model Benchmarks</span>
-                </a>
+                <p className="mb-6 flex-1 text-xs leading-relaxed text-slate-600">
+                  {model.description}
+                </p>
+
+                <div className="mt-auto flex gap-2">
+                  <a
+                    href={model.colabUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex flex-1 items-center justify-center gap-1.5 border border-slate-200 bg-white py-2.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                  >
+                    <ColabIcon className="size-3.5" />
+                    <span>Colab</span>
+                  </a>
+                  <a
+                    href={model.githubUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex flex-1 items-center justify-center gap-1.5 border border-slate-200 bg-slate-900 py-2.5 text-xs font-medium text-white transition-colors hover:bg-slate-800"
+                  >
+                    <GitHubIcon className="size-3.5" />
+                    <span>Source</span>
+                  </a>
+                </div>
               </div>
+            ))}
+
+            {filteredModels.length === 0 && (
+              <div className="col-span-full py-12 text-center border border-dashed border-slate-300">
+                <p className="text-sm text-slate-500">No models match your search criteria.</p>
+                <button
+                  onClick={() => { setSearchQuery(""); setStatusFilter("all"); }}
+                  className="mt-3 text-xs font-medium text-slate-900 underline underline-offset-2"
+                >
+                  Clear filters
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-12 border-t border-slate-200 pt-8">
+            <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-slate-900">
+              Lab Resources
+            </h2>
+            <div className="flex flex-wrap gap-3">
+              <a href="#" className="flex items-center gap-2 border border-slate-200 px-4 py-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
+                <ExternalLink className="size-3.5 text-slate-400" />
+                <span>Documentation Wiki</span>
+              </a>
+              <a href="#" className="flex items-center gap-2 border border-slate-200 px-4 py-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
+                <ExternalLink className="size-3.5 text-slate-400" />
+                <span>Training Data</span>
+              </a>
+              <a href="#" className="flex items-center gap-2 border border-slate-200 px-4 py-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
+                <ExternalLink className="size-3.5 text-slate-400" />
+                <span>Model Benchmarks</span>
+              </a>
             </div>
           </div>
         </main>
       </div>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-200 bg-slate-50/50">
-        <div className="mx-auto flex h-10 max-w-6xl items-center justify-between px-4">
-          <span className="text-[10px] text-slate-400">
-            Ke Lab Research Portal
-          </span>
-          <span className="font-mono text-[10px] text-slate-400">
-            Build 2024.03.14
-          </span>
+      <footer className="mt-auto border-t border-slate-200 bg-slate-50/50">
+        <div className="mx-auto flex h-12 w-full max-w-7xl items-center justify-between px-6">
+          <span className="text-[10px] text-slate-500">Ke Lab Research Portal</span>
+          <span className="font-mono text-[10px] text-slate-400">Build 2024.03.14</span>
         </div>
       </footer>
     </div>
